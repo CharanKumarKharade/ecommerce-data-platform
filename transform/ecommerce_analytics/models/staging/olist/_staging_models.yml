@@ -1,0 +1,113 @@
+
+version: 2
+
+models:
+
+  - name: stg_orders
+    description: "Cleaned and standardised Olist order data."
+    columns:
+      - name: order_id
+        description: "Unique identifier for an order."
+        data_tests:
+          - unique
+          - not_null
+
+      - name: customer_id
+        data_tests:
+          - not_null
+
+      - name: order_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - delivered
+                  - shipped
+                  - canceled
+                  - unavailable
+                  - invoiced
+                  - processing
+                  - created
+                  - approved
+
+  - name: stg_order_items
+    description: "Cleaned order-item data. One row per order item."
+    columns:
+      - name: order_id
+        data_tests:
+          - not_null
+
+      - name: order_item_id
+        data_tests:
+          - not_null
+
+      - name: product_id
+        data_tests:
+          - not_null
+
+  - name: stg_customers
+    description: "Cleaned customer information."
+    columns:
+      - name: customer_id
+        data_tests:
+          - unique
+          - not_null
+
+      - name: customer_unique_id
+        data_tests:
+          - not_null
+
+  - name: stg_products
+    description: "Cleaned product catalogue."
+    columns:
+      - name: product_id
+        data_tests:
+          - unique
+          - not_null
+
+  - name: stg_sellers
+    description: "Cleaned seller information."
+    columns:
+      - name: seller_id
+        data_tests:
+          - unique
+          - not_null
+
+  - name: stg_order_payments
+    description: "Cleaned payment records."
+    columns:
+      - name: order_id
+        data_tests:
+          - not_null
+
+      - name: payment_value
+        data_tests:
+          - not_null
+
+  - name: stg_order_reviews
+    description: "Cleaned customer review records."
+    columns:
+      - name: review_id
+        data_tests:
+          - not_null
+
+      - name: review_score
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+
+  - name: stg_product_category_translation
+    description: "Mapping of Portuguese product categories to English."
+    columns:
+      - name: product_category_name
+        data_tests:
+          - unique
+          - not_null
+
+  - name: stg_geolocation
+    description: "Cleaned geographic coordinates associated with ZIP prefixes."
+    columns:
+      - name: geolocation_zip_code_prefix
+        data_tests:
+          - not_null
