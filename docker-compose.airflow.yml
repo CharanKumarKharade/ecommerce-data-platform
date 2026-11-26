@@ -1,0 +1,109 @@
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: docker/airflow/Dockerfile
+
+  image: ecommerce-airflow:3.1.5
+
+  environment:
+    # Airflow configuration
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW_DATABASE_URL}
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.session
+
+    # PostgreSQL warehouse configuration
+    POSTGRES_USER: ${POSTGRES_USER}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    POSTGRES_DB: ${POSTGRES_DB}
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: "5432"
+
+    # dbt configuration
+    DBT_PROFILES_DIR: /opt/airflow/config/dbt
+
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/plugins:/opt/airflow/plugins
+    - ./ingestion:/opt/airflow/ingestion
+    - ./data:/opt/airflow/data
+    - ./transform:/opt/airflow/transform
+    - ${HOME}/.dbt:/opt/airflow/config/dbt:ro
+
+  user: "${AIRFLOW_UID:-50000}:0"
+
+  networks:
+    - ecommerce-data-platform_default
+
+
+services:
+
+  # Airflow initialization
+  airflow-init:
+    <<: *airflow-common
+
+    entrypoint: /bin/bash
+
+    command:
+      - -c
+      - |
+        airflow db migrate
+
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@example.com || true
+
+    restart: "no"
+
+
+  # Airflow API server
+  airflow-apiserver:
+    <<: *airflow-common
+
+    command: api-server
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+    restart: unless-stopped
+
+
+  # Airflow scheduler
+  airflow-scheduler:
+    <<: *airflow-common
+
+    command: scheduler
+
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+    restart: unless-stopped
+
+
+  # Airflow DAG processor
+  airflow-dag-processor:
+    <<: *airflow-common
+
+    command: dag-processor
+
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+    restart: unless-stopped
+
+
+networks:
+  ecommerce-data-platform_default:
+    external: true
